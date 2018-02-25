@@ -2,8 +2,6 @@ package learningconcurrency.tasks.ch1
 
 import learningconcurrency.tasks.ch1.Tasks._
 
-import scala.collection.immutable.Stream.Empty
-import scala.util.matching.Regex
 import scala.util.{Success, Try}
 
 object Tasks {
