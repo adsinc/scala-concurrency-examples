@@ -2,6 +2,8 @@ package learningconcurrency.tasks.ch1
 
 import learningconcurrency.tasks.ch1.Tasks._
 
+import scala.collection.immutable.Stream.Empty
+import scala.util.matching.Regex
 import scala.util.{Success, Try}
 
 object Tasks {
@@ -23,11 +25,40 @@ object Tasks {
       case _ => false
     }
 
+  // 4
   class Pair[A, B](val first: A, val second: B)
 
   object Pair {
     def unapply[A, B](arg: Pair[A, B]): Option[(A, B)] = Some(arg.first, arg.second)
   }
+
+  // 5
+  def permutations(s: String): Seq[String] =
+    if (s.isEmpty) Seq.empty[String]
+    else if (s.length == 1) Seq(s)
+    else permutations(s.tail).flatMap { sq =>
+      for {
+        i <- 0 to sq.length
+        (h, t) = sq.splitAt(i)
+      } yield (h :+ s.head) ++ t
+    }
+
+  // 6
+  def combinations(n: Int, xs: Seq[Int]): Iterator[Seq[Int]] = ???
+
+  // 7
+  def matcher(regex: String): PartialFunction[String, List[String]] =
+    new PartialFunction[String, List[String]] {
+      private val r = regex.r
+
+      def isDefinedAt(x: String): Boolean = r.findFirstIn(x).isDefined
+
+      def apply(s: String): List[String] =
+        if (!isDefinedAt(s)) throw new MatchError(s"Can't match $s")
+        else (r findAllIn s).toList
+
+    }
+
 }
 
 object Test3 extends App {
@@ -38,4 +69,16 @@ object Test4 extends App {
   new Pair(10, "human") match {
     case Pair(count, kind) => println(s"$count $kind")
   }
+}
+
+object Test5 extends App {
+  println(permutations("1234"))
+}
+
+object Test7 extends App {
+
+  val m = matcher("'.+'")
+
+  println(m("'aaa','bbb'"))
+  println(m("aaa"))
 }
