@@ -1,10 +1,8 @@
 package learningconcurrency.tasks.ch1
 
-import learningconcurrency.tasks.ch1.Tasks._
-
 import scala.util.{Success, Try}
 
-object Tasks {
+object Tasks1 {
   // 1
   def compose[A, B, C](f: A => B, g: B => C): A => C =
     a => g(f(a))
