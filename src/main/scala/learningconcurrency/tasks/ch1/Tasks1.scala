@@ -1,5 +1,7 @@
 package learningconcurrency.tasks.ch1
 
+import learningconcurrency.tasks.ch1.Tasks1._
+
 import scala.util.{Success, Try}
 
 object Tasks1 {
