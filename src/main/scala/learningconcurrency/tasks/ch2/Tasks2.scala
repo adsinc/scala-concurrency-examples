@@ -41,6 +41,22 @@ object Tasks2 {
       }
     }
 
+  class SyncVar[T] {
+    var v: T = null.asInstanceOf[T]
+    var empty = false
+
+    def get(): T = this.synchronized {
+      require(!empty, "No value in var")
+      empty = true
+      v
+    }
+
+    def put(x: T): Unit = this.synchronized {
+      v = x
+      empty = false
+    }
+  }
+
 }
 
 object TestParallel extends App {
