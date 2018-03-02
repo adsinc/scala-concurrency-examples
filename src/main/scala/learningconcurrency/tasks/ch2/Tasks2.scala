@@ -43,7 +43,7 @@ object Tasks2 {
 
   class SyncVar[T] {
     var v: T = null.asInstanceOf[T]
-    var empty = false
+    var empty = true
 
     def get(): T = this.synchronized {
       require(!empty, "No value in var")
@@ -52,9 +52,30 @@ object Tasks2 {
     }
 
     def put(x: T): Unit = this.synchronized {
+      require(empty, "Var is not empty")
       v = x
       empty = false
     }
+
+    def getWait: T = this.synchronized {
+      if (empty)
+        wait()
+      empty = true
+      this.notify()
+      v
+    }
+
+    def putWait(x: T): Unit = this.synchronized {
+      if (!empty)
+        wait()
+      v = x
+      empty = false
+      this.notify()
+    }
+
+    def isEmpty: Boolean = this.synchronized(empty)
+
+    def nonEmpty: Boolean = this.synchronized(!empty)
   }
 
 }
@@ -69,4 +90,50 @@ object TestParallel extends App {
 
 object TestPeriodically extends App {
   periodically(1000)(println("Kill all human"))
+}
+
+object TestSyncVarWithEmpty extends App {
+  val syncVar = new SyncVar[Int]
+
+  val s = thread {
+    var i = 0
+    while (i <= 15) {
+      if (syncVar.isEmpty) {
+        syncVar.put(i)
+        i += 1
+      }
+    }
+  }
+
+  val c = thread {
+    var x = 0
+    while (x < 15) {
+      if (syncVar.nonEmpty) {
+        x = syncVar.get()
+        println(x)
+      }
+    }
+  }
+
+  s.join()
+  c.join()
+}
+
+object TestSyncVarWithWait extends App {
+  val syncVar = new SyncVar[Int]
+
+  val s = thread {
+    0 to 15 foreach syncVar.putWait
+  }
+
+  val c = thread {
+    var x = 0
+    while (x < 15) {
+      x = syncVar.getWait
+      println(x)
+    }
+  }
+
+  s.join()
+  c.join()
 }
