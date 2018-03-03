@@ -78,6 +78,25 @@ object Tasks2 {
     def nonEmpty: Boolean = this.synchronized(!empty)
   }
 
+  class SyncQueue[T](size: Int) {
+    private val q = collection.mutable.Queue[T]()
+
+    def get(): T = this.synchronized {
+      if (q.isEmpty)
+        wait()
+      val t = q.dequeue()
+      notify()
+      t
+    }
+
+    def put(x: T): Unit = this.synchronized {
+      if (q.lengthCompare(size) >= 0)
+        wait()
+      q.enqueue(x)
+      notify()
+    }
+  }
+
 }
 
 object TestParallel extends App {
@@ -137,3 +156,24 @@ object TestSyncVarWithWait extends App {
   s.join()
   c.join()
 }
+
+object TestSyncQueueWithWait extends App {
+  val n = 30
+  val q = new SyncQueue[Int](10)
+
+  val s = thread {
+    0 to 30 foreach q.put
+  }
+
+  val c = thread {
+    var x = 0
+    while (x < 30) {
+      x = q.get()
+      println(x)
+    }
+  }
+
+  s.join()
+  c.join()
+}
+
