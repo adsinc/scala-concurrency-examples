@@ -1,7 +1,10 @@
 package learningconcurrency.tasks
 package ch2
 
+import learningconcurrency.tasks.ch2.Tasks2.SynchronizedProtectedUid.getUniqueId
 import learningconcurrency.tasks.ch2.Tasks2._
+
+import scala.collection.immutable.IndexedSeq
 
 object Tasks2 {
 
@@ -97,6 +100,38 @@ object Tasks2 {
     }
   }
 
+  object SynchronizedProtectedUid {
+    var uidCount = 0L
+
+    def getUniqueId: Long = this.synchronized {
+      uidCount += 1
+      uidCount
+    }
+  }
+
+  class Account(var name: String, var money: Int) {
+    val uid: Long = getUniqueId
+
+    override def toString = s"Account($uid, $name, $money)"
+  }
+
+  def sendAll(accounts: Set[Account], target: Account): Unit = {
+    val lockOrder = (accounts + target).toSeq sortBy (_.uid)
+
+    def syncAll(acs: Seq[Account], action: => Unit): Unit =
+      if (acs.isEmpty) action
+      else acs.head.synchronized(syncAll(acs.tail, action))
+
+
+    syncAll(lockOrder, {
+      accounts.foreach { src =>
+        if (src.uid != target.uid) {
+          target.money += src.money
+          src.money = 0
+        }
+      }
+    })
+  }
 }
 
 object TestParallel extends App {
@@ -177,3 +212,14 @@ object TestSyncQueueWithWait extends App {
   c.join()
 }
 
+object TestSendAll extends App {
+  val accounts: IndexedSeq[Account] = 1 to 10 map (i => new Account(s"Account $i", 10))
+
+  val ts = for {
+    i <- accounts.indices
+  } yield thread {
+    sendAll(accounts.toSet, accounts(i))
+  }
+  ts foreach (_.join())
+  accounts foreach println
+}
