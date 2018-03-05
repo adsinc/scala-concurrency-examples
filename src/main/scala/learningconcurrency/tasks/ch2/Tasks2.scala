@@ -5,6 +5,7 @@ import learningconcurrency.tasks.ch2.Tasks2.SynchronizedProtectedUid.getUniqueId
 import learningconcurrency.tasks.ch2.Tasks2._
 
 import scala.collection.immutable.IndexedSeq
+import scala.collection.mutable
 
 object Tasks2 {
 
@@ -82,7 +83,7 @@ object Tasks2 {
   }
 
   class SyncQueue[T](size: Int) {
-    private val q = collection.mutable.Queue[T]()
+    private val q = mutable.Queue[T]()
 
     def get(): T = this.synchronized {
       if (q.isEmpty)
@@ -222,4 +223,42 @@ object TestSendAll extends App {
   }
   ts foreach (_.join())
   accounts foreach println
+}
+
+class PriorityPool {
+  type Task = () => Unit
+  type PriorityTask = (Int, Task)
+
+  private val tasks = mutable.PriorityQueue[PriorityTask]()(Ordering.by(p => p._1))
+  Worker.start()
+
+  def asynchronous(priority: Int, body: => Unit): Unit = tasks.synchronized {
+    tasks.enqueue((priority, () => body))
+    tasks.notify()
+  }
+
+  object Worker extends Thread {
+    setDaemon(true)
+
+    private def poll() = tasks.synchronized {
+      while (tasks.isEmpty) tasks.wait()
+      tasks.dequeue()
+    }
+
+    override def run(): Unit = while (true) {
+      val task = poll()
+      task._2()
+    }
+  }
+
+}
+
+object PriorityPoolTest extends App {
+  val p = new PriorityPool
+
+  import p.asynchronous
+
+  1 to 50 foreach (i => asynchronous(i, log(s"Hello $i")))
+
+  Thread.sleep(2000)
 }
