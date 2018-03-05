@@ -243,6 +243,10 @@ class PriorityPool(workerCount: Int = 1, important: Int = 0) {
     tasks.notify()
   }
 
+  def shutdown(): Unit = {
+    ???
+  }
+
   class Worker(name: String) extends Thread {
     setName(name)
     setDaemon(true)
