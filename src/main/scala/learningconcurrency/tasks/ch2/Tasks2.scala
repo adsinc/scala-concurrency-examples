@@ -3,6 +3,7 @@ package ch2
 
 import learningconcurrency.tasks.ch2.Tasks2.SynchronizedProtectedUid.getUniqueId
 import learningconcurrency.tasks.ch2.Tasks2._
+import learningconcurrency.tasks.time
 
 import scala.collection.immutable.IndexedSeq
 import scala.collection.mutable
@@ -225,19 +226,25 @@ object TestSendAll extends App {
   accounts foreach println
 }
 
-class PriorityPool {
+class PriorityPool(workerCount: Int = 1, important: Int = 0) {
   type Task = () => Unit
   type PriorityTask = (Int, Task)
 
+  require(workerCount > 0)
+
   private val tasks = mutable.PriorityQueue[PriorityTask]()(Ordering.by(p => p._1))
-  Worker.start()
+
+  0 until workerCount foreach { i =>
+    new Worker(s"Worker $i").start()
+  }
 
   def asynchronous(priority: Int, body: => Unit): Unit = tasks.synchronized {
     tasks.enqueue((priority, () => body))
     tasks.notify()
   }
 
-  object Worker extends Thread {
+  class Worker(name: String) extends Thread {
+    setName(name)
     setDaemon(true)
 
     private def poll() = tasks.synchronized {
@@ -254,11 +261,14 @@ class PriorityPool {
 }
 
 object PriorityPoolTest extends App {
-  val p = new PriorityPool
+  val p1 = new PriorityPool
+  val p2 = new PriorityPool(8)
 
-  import p.asynchronous
+  1 to 50 foreach (i => p2.asynchronous(i, {
+    log(s"Hello $i")
+    Thread.sleep(500)
+  }))
 
-  1 to 50 foreach (i => asynchronous(i, log(s"Hello $i")))
 
-  Thread.sleep(2000)
+  Thread.sleep(1000)
 }
