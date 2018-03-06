@@ -233,6 +233,7 @@ class PriorityPool(workerCount: Int = 1, important: Int = 0) {
   require(workerCount > 0)
 
   private val tasks = mutable.PriorityQueue[PriorityTask]()(Ordering.by(p => p._1))
+  @volatile private var isShutdown = false
 
   0 until workerCount foreach { i =>
     new Worker(s"Worker $i").start()
@@ -243,36 +244,38 @@ class PriorityPool(workerCount: Int = 1, important: Int = 0) {
     tasks.notify()
   }
 
-  def shutdown(): Unit = {
-    ???
-  }
+  def shutdown(): Unit = isShutdown = true
 
   class Worker(name: String) extends Thread {
     setName(name)
     setDaemon(true)
 
-    private def poll() = tasks.synchronized {
+    private def poll(): Option[PriorityTask] = tasks.synchronized {
       while (tasks.isEmpty) tasks.wait()
-      tasks.dequeue()
+      if(isShutdown && tasks.forall(_._1 < important)) {
+        tasks.dequeueAll
+        None
+      }
+      else Some(tasks.dequeue())
     }
 
     override def run(): Unit = while (true) {
-      val task = poll()
-      task._2()
+      poll().foreach(_._2.apply())
     }
   }
 
 }
 
 object PriorityPoolTest extends App {
-  val p1 = new PriorityPool
+  val p1 = new PriorityPool(important = 30)
   val p2 = new PriorityPool(8)
 
-  1 to 50 foreach (i => p2.asynchronous(i, {
+  1 to 50 foreach (i => p1.asynchronous(i, {
     log(s"Hello $i")
-    Thread.sleep(500)
+    Thread.sleep(20)
   }))
 
+  p1.shutdown()
 
   Thread.sleep(1000)
 }
