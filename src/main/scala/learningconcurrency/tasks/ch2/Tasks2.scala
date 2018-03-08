@@ -279,3 +279,69 @@ object PriorityPoolTest extends App {
 
   Thread.sleep(1000)
 }
+
+class ConcurrentBiMap[K, V] extends Iterable[(K, V)] {
+  private val data = mutable.ArrayBuffer[(K, V)]()
+
+  private def keyIndex(k: K) = data indexWhere (_._1 == k)
+
+  def put(k: K, v: V): Option[(K, V)] = data.synchronized {
+    val i = keyIndex(k)
+    val r = if(i < 0) None
+    else Some(data remove i)
+    data :+ k -> v
+    r
+  }
+
+  def removeKey(k: K): Option[V] = data.synchronized {
+    val i = keyIndex(k)
+    if(i < 0) None
+    else Some(data remove i).map(_._2)
+  }
+
+  def removeValue(v: V): Option[K] = data.synchronized {
+    val vi = data indexWhere (_._2 == v)
+    if(vi < 0) None
+    else Some(data remove vi).map(_._1)
+  }
+
+  def getValue(k: K): Option[V] = data.synchronized {
+    data find (_._1 == k) map (_._2)
+  }
+
+  def getKey(v: V): Option[K] = data.synchronized {
+    data find (_._2 == v) map (_._1)
+  }
+
+  override def size: Int = data.synchronized(data.size)
+
+  def iterator: Iterator[(K, V)] = data.synchronized {
+    data.toList.iterator
+  }
+
+  def replace(k1: K, v1: V, k2: K, v2: V): Unit = data.synchronized {
+    val i = data.indexWhere(_ == k1 -> v1)
+    if(i >= 0) {
+      data.remove(i)
+      data :+ k2 -> v2
+    }
+  }
+}
+
+object ConcurrentBiMapTest extends App {
+  val m = new ConcurrentBiMap[Int, Int]()
+  val n = 2000000
+  val ts1 = 1 to n map (i => i -> (n - i)) grouped 8 map( seq =>
+    thread {
+      seq.foreach((m.put _).tupled)
+    }
+  )
+
+  ts1 foreach (_.join())
+
+  val ts2 = m grouped 8 map { seq =>
+    thread {
+      seq.foreach(p => m.replace(p._1, p._2, p._2, p._1))
+    }
+  }
+}
