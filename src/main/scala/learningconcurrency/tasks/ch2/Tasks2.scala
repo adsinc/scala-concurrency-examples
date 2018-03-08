@@ -345,3 +345,24 @@ object ConcurrentBiMapTest extends App {
     }
   }
 }
+
+object CacheTest extends App {
+  def cache[A, B](f: A => B): A => B = {
+    val m = new mutable.HashMap[A, B]()
+    a => m.synchronized {
+      m.getOrElseUpdate(a, f(a))
+    }
+  }
+
+  val mf = cache(math.sqrt)
+
+  for {
+    i <- 1 to 5
+  } thread(println(mf(i)))
+
+  for {
+    i <- 1 to 5
+  } thread(println(mf(i)))
+
+  Thread.sleep(1000)
+}
