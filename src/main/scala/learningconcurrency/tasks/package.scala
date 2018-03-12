@@ -1,5 +1,7 @@
 package learningconcurrency
 
+import scala.concurrent.ExecutionContext
+
 package object tasks {
 
   def log(msg: String) {
@@ -13,4 +15,15 @@ package object tasks {
     r
   }
 
+  def thread(block: => Unit): Thread = {
+    val t = new Thread() {
+      override def run(): Unit = block
+    }
+    t.start()
+    t
+  }
+
+  def execute(body: => Unit): Unit = ExecutionContext.global.execute {
+    () => body
+  }
 }

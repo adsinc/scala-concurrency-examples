@@ -3,20 +3,11 @@ package ch2
 
 import learningconcurrency.tasks.ch2.Tasks2.SynchronizedProtectedUid.getUniqueId
 import learningconcurrency.tasks.ch2.Tasks2._
-import learningconcurrency.tasks.time
 
 import scala.collection.immutable.IndexedSeq
 import scala.collection.mutable
 
 object Tasks2 {
-
-  def thread(block: => Unit): Thread = {
-    val t = new Thread() {
-      override def run(): Unit = block
-    }
-    t.start()
-    t
-  }
 
   def parallel[A, B](a: => A, b: => B): (A, B) = {
     var resA: A = null.asInstanceOf[A]
