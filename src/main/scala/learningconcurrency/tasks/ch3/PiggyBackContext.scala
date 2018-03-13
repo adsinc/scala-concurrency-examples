@@ -29,7 +29,7 @@ object PiggyBackContextTest extends App {
 
     ec.execute { () =>
       ec.execute { () =>
-        log("Inner call
+        log("Inner call")
       }
     }
   }
