@@ -16,6 +16,14 @@ package object tasks {
     r
   }
 
+  @volatile private var dummy: Any = _
+
+  def timed[T](body: => T): Double = {
+    val start = System.nanoTime()
+    dummy = body
+    ((System.nanoTime() - start) / 1000) / 1000.0
+  }
+
   def thread(block: => Unit): Thread = {
     val t = new Thread() {
       override def run(): Unit = block
