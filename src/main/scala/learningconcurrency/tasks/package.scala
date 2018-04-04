@@ -9,9 +9,10 @@ package object tasks {
   }
 
   def time[T](name: String)(body: => T): T = {
-    val start = System.currentTimeMillis()
+    val start = System.nanoTime()
     val r = body
-    log(s"$name executed at ${System.currentTimeMillis() - start}")
+    val time = (System.nanoTime() - start) / 1000 / 1000.0
+    log(s"$name executed at $time")
     r
   }
 
