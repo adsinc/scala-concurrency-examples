@@ -12,8 +12,17 @@ package object tasks {
     val start = System.nanoTime()
     val r = body
     val time = (System.nanoTime() - start) / 1000 / 1000.0
-    log(s"$name executed at $time")
+    log(s"$name executed at $time ms, result: $r")
     r
+  }
+
+  def warmedTime[T](name: String, n: Int = 200)(body: => T): T = {
+    for (_ <- 0 until n) body
+    time(name)(body)
+  }
+
+  def warm[T](body: => T, n: Int = 200): Unit = {
+    for (_ <- 0 until n) body
   }
 
   @volatile private var dummy: Any = _
