@@ -9,3 +9,4 @@ libraryDependencies += "commons-io" % "commons-io" % "2.6"
 
 libraryDependencies += "org.scala-lang.modules" %% "scala-async" % "0.9.7"
 libraryDependencies += "io.reactivex" %% "rxscala" % "0.26.5"
+libraryDependencies += "org.scala-lang.modules" %% "scala-swing" % "2.0.3"
