@@ -4,7 +4,7 @@ import scala.concurrent.ExecutionContext
 
 package object tasks {
 
-  def log(msg: String) {
+  def log(msg: Any) {
     println(s"${Thread.currentThread.getName}: $msg")
   }
 
