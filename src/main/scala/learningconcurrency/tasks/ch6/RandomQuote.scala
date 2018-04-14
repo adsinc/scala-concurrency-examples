@@ -19,7 +19,7 @@ object RandomQuote extends App {
 
   randomQuote
     .map(_.length)
-    .repeat(5)
+    .repeat(10)
     .scan((0, 0)) {
       case ((oldLen, cnt), l) => (oldLen + l, cnt + 1)
     }
