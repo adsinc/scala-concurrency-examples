@@ -12,15 +12,15 @@ object TPairTest extends App {
     private val p = Ref(pInit)
     private val q = Ref(qInit)
 
-    def first(implicit txn: InTxn): P = p.single()
+    def first(implicit txn: InTxn): P = p()
 
-    def first_=(x: P)(implicit txn: InTxn): P = p.single swap x
+    def first_=(x: P)(implicit txn: InTxn): Unit = p.single() = x
 
-    def second(implicit txn: InTxn): Q = q.single()
+    def second(implicit txn: InTxn): Q = q()
 
-    def second_=(y: Q)(implicit txn: InTxn): Q = q.single swap y
+    def second_=(y: Q)(implicit txn: InTxn): Unit = q.single() = y
 
-    def swap()(implicit e: P =:= Q, e2: Q =:= P,txn: InTxn): Unit = atomic { tx =>
+    def swap()(implicit e: P =:= Q, e2: Q =:= P,txn: InTxn): Unit = {
       val tmp = q()
       q() = p()
       p() = tmp
