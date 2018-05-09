@@ -1,8 +1,14 @@
 package learningconcurrency.tasks.ch8
 
-import akka.actor.{Actor, ActorRef, ActorSystem}
+import akka.actor._
 import akka.event.Logging
-import learningconcurrency.tasks.ch8.AccountActor.{Deposit, Send}
+import akka.pattern._
+import akka.util.Timeout
+import learningconcurrency.tasks.ch8.AccountActor.{AccountBalance, CheckBalance, Deposit, Send}
+
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration.{Duration, DurationDouble}
+import scala.concurrent.{Await, Future}
 
 class AccountActor(val initialSum: Long) extends Actor {
   val log = Logging(context.system, this)
@@ -19,8 +25,14 @@ class AccountActor(val initialSum: Long) extends Actor {
         log.error("No money")
       }
     case Deposit(amount) =>
-      log.info(s"Received $amount")
-      context become onMessage(sum + amount)
+      if(sender() != self) {
+        log.info(s"Received $amount")
+        context become onMessage(sum + amount)
+      } else {
+        log.info(s"Ignore deposit $amount to self")
+      }
+    case CheckBalance =>
+      sender() ! AccountBalance(sum)
   }
 }
 
@@ -30,13 +42,30 @@ object AccountActor {
 
   case class Deposit(amount: Long)
 
+  object CheckBalance
+
+  case class AccountBalance(sum: Long)
+
+  def props(sum: Long) = Props(new AccountActor(sum))
 }
 
 object Account extends App {
   val actorSystem = ActorSystem("Accounts")
 
-  // todo check accounts equal, generate accounts and send money many times
+  val accounts = 1 to 10 map (i => actorSystem.actorOf(AccountActor.props(1000), s"account-$i"))
+
+  // todo send money many times
   // todo check killing actor
+
+  implicit val timeout: Timeout = akka.util.Timeout(2.seconds)
+  def getBalance(ref: ActorRef): Future[Long] =
+    ref ? CheckBalance map {
+      case AccountBalance(sum) => sum
+    }
+
+  val totalSum = Await.result(Future.sequence(accounts map getBalance), Duration.Inf).sum
+  println(s"Total sum $totalSum")
 
   actorSystem.terminate()
 }
+
