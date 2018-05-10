@@ -9,6 +9,7 @@ import learningconcurrency.tasks.ch8.AccountActor.{AccountBalance, CheckBalance,
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.{Duration, DurationDouble}
 import scala.concurrent.{Await, Future}
+import scala.util.Random
 
 class AccountActor(val initialSum: Long) extends Actor {
   val log = Logging(context.system, this)
@@ -16,8 +17,10 @@ class AccountActor(val initialSum: Long) extends Actor {
   def receive: Receive = onMessage(initialSum)
 
   def onMessage(sum: Long): Receive = {
+    case Send(amount, dest) if dest == self =>
+      log.info(s"Ignore deposit $amount to self")
     case Send(amount, dest) =>
-      log.info(s"Trying to send $amount")
+      log.info(s"Trying send $amount to $dest")
       if (amount <= sum && amount > 0) {
         context become onMessage(sum - amount)
         dest ! Deposit(amount)
@@ -25,12 +28,8 @@ class AccountActor(val initialSum: Long) extends Actor {
         log.error("No money")
       }
     case Deposit(amount) =>
-      if(sender() != self) {
-        log.info(s"Received $amount")
-        context become onMessage(sum + amount)
-      } else {
-        log.info(s"Ignore deposit $amount to self")
-      }
+      log.info(s"Received $amount")
+      context become onMessage(sum + amount)
     case CheckBalance =>
       sender() ! AccountBalance(sum)
   }
@@ -52,10 +51,23 @@ object AccountActor {
 object Account extends App {
   val actorSystem = ActorSystem("Accounts")
 
-  val accounts = 1 to 10 map (i => actorSystem.actorOf(AccountActor.props(1000), s"account-$i"))
+  val AccountCount = 10
 
-  // todo send money many times
+  val accounts = 1 to AccountCount map (i => actorSystem.actorOf(AccountActor.props(1000), s"account-$i"))
+
   // todo check killing actor
+
+  accounts foreach { account =>
+    Future {
+      for {
+        _ <- 1 to 1000
+        sum = Random.nextInt(1000)
+        receiver = accounts(Random.nextInt(AccountCount))
+      } account ! Send(sum, receiver)
+    }
+  }
+
+  Thread.sleep(3000)
 
   implicit val timeout: Timeout = akka.util.Timeout(2.seconds)
   def getBalance(ref: ActorRef): Future[Long] =
