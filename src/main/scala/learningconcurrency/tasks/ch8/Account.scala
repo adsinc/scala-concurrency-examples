@@ -3,6 +3,7 @@ package learningconcurrency.tasks.ch8
 import akka.actor._
 import akka.event.Logging
 import akka.pattern._
+import akka.stream.Supervision.Restart
 import akka.util.Timeout
 import learningconcurrency.tasks.ch8.AccountActor.{AccountBalance, CheckBalance, Deposit, Send}
 
@@ -61,9 +62,16 @@ object Account extends App {
     Future {
       for {
         _ <- 1 to 1000
-        sum = Random.nextInt(1000)
+        sum = Random.nextInt(200)
         receiver = accounts(Random.nextInt(AccountCount))
       } account ! Send(sum, receiver)
+    }
+
+    Future {
+      for (_ <- 1 to 100) {
+        Thread.sleep(Random.nextInt(10))
+        account ! Restart
+      }
     }
   }
 
