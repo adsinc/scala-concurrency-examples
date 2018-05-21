@@ -2,19 +2,33 @@ package learningconcurrency.tasks.ch8
 
 import akka.actor.{Actor, ActorRef, ActorSystem, Props}
 import akka.event.Logging
+import akka.pattern._
+import akka.util.Timeout
+import akka.util.Timeout.durationToTimeout
+import learningconcurrency.tasks._
 import learningconcurrency.tasks.ch8.DispatcherActor.{Completed, Execute, Failed}
 
 import scala.collection.mutable
+import scala.concurrent.duration.{DurationLong, FiniteDuration}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 
-class ActorExecutionContext(executorCount: Int) extends ExecutionContext {
+class ActorExecutionContext(executorCount: Int, timeout: FiniteDuration = 30.seconds) extends ExecutionContext {
   private val actorSystem = ActorSystem("ActorExecutionContext")
   private val dispatcher = actorSystem.actorOf(Props(new DispatcherActor(executorCount)))
+  private implicit val waitTimeout: Timeout = timeout
 
-  def execute(runnable: Runnable): Unit = dispatcher ! Execute(runnable)
+  def execute(runnable: Runnable): Unit = {
+    import scala.concurrent.ExecutionContext.Implicits.global
+    dispatcher ? Execute(runnable) onComplete {
+      case Failure(t) => reportFailure(t)
+      case Success(Failed(t)) => reportFailure(t)
+      case _ =>
+    }
+  }
 
-  def reportFailure(cause: Throwable): Unit = println(s"Error on task execute: $cause")
+  def reportFailure(cause: Throwable): Unit =
+    log(s"Error on task execute: $cause")
 
   def shutdown(): Unit = actorSystem.terminate()
 }
@@ -32,12 +46,19 @@ class DispatcherActor(executorCount: Int) extends Actor {
     case task@Execute(_) =>
       waitingTasks.enqueue(task)
       tryStartTask()
-    case Completed =>
-      runningExecutors -= sender()
-      freeExecutors.enqueue(sender())
+    case msg@Completed =>
+      context.parent forward msg
+      freeSender()
       tryStartTask()
-    case Failed(t) =>
-      ???
+    case msg@Failed(_) =>
+      context.parent forward msg
+      freeSender()
+      tryStartTask()
+  }
+
+  private def freeSender(): Unit = {
+    runningExecutors -= sender()
+    freeExecutors enqueue sender()
   }
 
   private def tryStartTask(): Unit = {
@@ -77,9 +98,11 @@ class ExecutorActor extends Actor {
 object ExecutionContextTest extends App {
   implicit val executionContext: ActorExecutionContext = new ActorExecutionContext(3)
 
-  for(i <- 1 to 10) Future {
+  for(i <- 1 to 2) Future {
     println(s"Task $i")
   }
+
+  executionContext.execute { () => throw new IllegalArgumentException("Error!") }
 
   Thread.sleep(1000)
 
