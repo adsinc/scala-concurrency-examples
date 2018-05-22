@@ -1,8 +1,6 @@
 package learningconcurrency.tasks.ch8
 
-import akka.actor.{Actor, ActorRef, ActorSystem, Props}
-import akka.event.Logging
-import akka.pattern._
+import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
 import akka.util.Timeout
 import akka.util.Timeout.durationToTimeout
 import learningconcurrency.tasks._
@@ -10,22 +8,16 @@ import learningconcurrency.tasks.ch8.DispatcherActor.{Completed, Execute, Failed
 
 import scala.collection.mutable
 import scala.concurrent.duration.{DurationLong, FiniteDuration}
-import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Failure, Success, Try}
+import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.util.{Failure, Random, Success, Try}
 
 class ActorExecutionContext(executorCount: Int, timeout: FiniteDuration = 30.seconds) extends ExecutionContext {
   private val actorSystem = ActorSystem("ActorExecutionContext")
   private val dispatcher = actorSystem.actorOf(Props(new DispatcherActor(executorCount)))
   private implicit val waitTimeout: Timeout = timeout
 
-  def execute(runnable: Runnable): Unit = {
-    import scala.concurrent.ExecutionContext.Implicits.global
-    dispatcher ? Execute(runnable) onComplete {
-      case Failure(t) => reportFailure(t)
-      case Success(Failed(t)) => reportFailure(t)
-      case _ =>
-    }
-  }
+  def execute(runnable: Runnable): Unit =
+    dispatcher ! Execute(runnable)
 
   def reportFailure(cause: Throwable): Unit =
     log(s"Error on task execute: $cause")
@@ -79,24 +71,25 @@ object DispatcherActor {
   case class Failed(t: Throwable)
 }
 
-class ExecutorActor extends Actor {
-  val log = Logging(context.system, this)
-
+class ExecutorActor extends Actor with ActorLogging {
   def receive: Receive = {
     case Execute(task) =>
       Try(task.run()) match {
         case Success(()) =>
           sender() ! Completed
-          log.info("Task completed")
+//          log.info("Task completed")
         case Failure(e) =>
           sender() ! Failed(e)
-          log.info(s"Task failed: ${e.getMessage}")
+//          log.info(s"Task failed: ${e.getMessage}")
       }
   }
 }
 
 object ExecutionContextTest extends App {
-  implicit val executionContext: ActorExecutionContext = new ActorExecutionContext(3)
+
+  val ExecutorsCount = 4
+
+  implicit val executionContext: ActorExecutionContext = new ActorExecutionContext(ExecutorsCount)
 
   for(i <- 1 to 2) Future {
     println(s"Task $i")
@@ -104,7 +97,22 @@ object ExecutionContextTest extends App {
 
   executionContext.execute { () => throw new IllegalArgumentException("Error!") }
 
-  Thread.sleep(1000)
+  val numbers = (1 to 1000000).map(_ => Random.nextDouble())
+
+  def doWork(xs: IndexedSeq[Double]): Unit = xs.map(math.sqrt)
+
+  warmedTime("Sequence sqrt") {
+    doWork(numbers)
+  }
+
+  warmedTime("Parallel sqrt") {
+    val fs = numbers.grouped(numbers.length / ExecutorsCount) map { xs =>
+      Future {
+        doWork(xs)
+      }
+    }
+    Await.ready(Future.sequence(fs), 10.seconds)
+  }
 
   executionContext.shutdown()
 }
