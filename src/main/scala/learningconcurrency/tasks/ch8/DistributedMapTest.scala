@@ -1,6 +1,6 @@
 package learningconcurrency.tasks.ch8
 
-import akka.actor.{Actor, ActorLogging, ActorRef}
+import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
 import akka.pattern._
 import learningconcurrency.tasks.ch8.ShardActor.{Get, GetResult, Update}
 
@@ -9,9 +9,18 @@ import scala.concurrent.Future
 class DistributedMap[K, V](shards: ActorRef*) {
   def update(key: K, value: V): Future[Unit] = {
     // todo
-    shards.head ? Update(key, value)
+    shards.head ? Update(key, value) map (_ => ())
   }
+
   def get(key: K): Future[Option[V]] = ???
+}
+
+object DistributedMap {
+  def apply[K, V](shardCount: Int)(implicit actorSystem: ActorSystem): DistributedMap[K, V] = {
+    new DistributedMap {
+      for (_ <- 1 to shardCount) yield actorSystem.actorOf(Props[ShardActor[K, V]])
+    }
+  }
 }
 
 class ShardActor[K, V] extends Actor with ActorLogging {
@@ -31,6 +40,7 @@ object ShardActor {
   case class GetResult[V](result: Option[V])
 }
 
-object DistributedMapTest extends App{
+object DistributedMapTest extends App {
 
+  DistributedMap(10)
 }
