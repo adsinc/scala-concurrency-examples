@@ -2,11 +2,20 @@ package learningconcurrency.tasks.ch8
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
 
+import scala.collection.immutable.TreeMap
+
 class Sequencer(dest: ActorRef) extends Actor {
   def receive: Receive = onMessage(0)
 
-  def onMessage(nextNumber: Long): Receive = {
-    case (num: Long, msg) => ???
+  private def onMessage(nextNumber: Long, derived: TreeMap[Long, Any] = TreeMap.empty): Receive = {
+    case msg@(num: Long, _) =>
+      if (num == nextNumber) {
+        dest ! msg
+        var newNextNumber = nextNumber + 1
+        context become onMessage(newNextNumber)
+      } else {
+        context become onMessage(nextNumber, derived + msg)
+      }
     case msg => dest ! msg
   }
 }
