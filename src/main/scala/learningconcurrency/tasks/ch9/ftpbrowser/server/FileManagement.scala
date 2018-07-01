@@ -33,7 +33,11 @@ object FileManagement {
   case object Deleted extends State
 
   case class FileInfo(path: String, name: String, parent: String, modified: String,
-                      isDir: Boolean, size: Long, state: State)
+                      isDir: Boolean, size: Long, state: State) {
+    def toRow: Array[AnyRef] = Array[AnyRef](
+      name, if (isDir) "" else s"${size / 1000}kb", modified
+    )
+  }
 
   object FileInfo {
     def apply(file: File): FileInfo = {

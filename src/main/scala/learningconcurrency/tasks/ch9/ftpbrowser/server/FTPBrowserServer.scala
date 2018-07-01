@@ -48,15 +48,6 @@ object FTPBrowserServer {
 object FTPServer extends App {
   val fileSystem = new FileSystem(".")
   fileSystem.init()
-  val port = args(0).toInt
   val actorSystem = ActorSystem("FTPServerSystem", ConfigFactory.parseResources("server.conf"))
   actorSystem.actorOf(FtpServerActor(fileSystem), "server")
-  //  implicit val timeout: Timeout = 1.second
-  //
-  //  a ? GetFileList(".") map (x => x.asInstanceOf[List[FileInfo]]) foreach { fs =>
-  //    fs foreach println
-  //  }
-  //
-  //  Thread.sleep(2000)
-  //  actorSystem.terminate()
 }
