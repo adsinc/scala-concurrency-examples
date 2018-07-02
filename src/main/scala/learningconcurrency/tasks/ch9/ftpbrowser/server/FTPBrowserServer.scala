@@ -42,7 +42,6 @@ object FTPBrowserServer {
         } pipeTo sender()
     }
   }
-
 }
 
 object FTPServer extends App {

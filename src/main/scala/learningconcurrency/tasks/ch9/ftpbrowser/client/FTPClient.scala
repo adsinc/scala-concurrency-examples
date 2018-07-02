@@ -32,7 +32,7 @@ object FTPClient {
 
   }
 
-  class FTPClientActor(implicit val timeout: Timeout) extends Actor {
+  class FTPClientActor(implicit val timeout: Timeout) extends Actor with ActorLogging {
     def receive: Receive = unconnected
 
     def unconnected: Receive = {
@@ -66,8 +66,10 @@ object FTPClient {
     private val system = ActorSystem("FTPServerSystem", config)
     private val clientActor = system.actorOf(props)
 
+    def host: String
+
     val connected: Future[Boolean] = {
-      val f = clientActor ? FTPClientActor.Start
+      val f = clientActor ? FTPClientActor.Start(host)
       f.mapTo[Boolean]
     }
 
@@ -276,5 +278,7 @@ object FTPClientMain extends SimpleSwingApplication {
       log(s"could not change look&feel: $e")
   }
 
-  def top = new FTPClientFrame with FTPClientApi with FTPClientLogic
+  def top = new FTPClientFrame with FTPClientApi with FTPClientLogic {
+    def host: String = "127.0.0.1:8000"
+  }
 }
