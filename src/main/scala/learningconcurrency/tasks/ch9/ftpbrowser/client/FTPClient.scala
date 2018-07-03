@@ -20,7 +20,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.concurrent.duration.DurationInt
 import scala.swing.BorderPanel.Position._
-import scala.swing.event.MouseClicked
+import scala.swing.event.MousePressed
 import scala.swing.{Alignment, BorderPanel, Button, GridPanel, Label, MainFrame, Menu, MenuBar, MenuItem, ScrollPane, SimpleSwingApplication, Table, TextField}
 import scala.util.{Failure, Success, Try}
 
@@ -223,8 +223,8 @@ object FTPClient {
     implicit class TableOps(val self: Table) {
       def rowDoubleClicks = Observable[Int] { sub =>
         self.listenTo(self.mouse.clicks)
-        reactions += {
-          case MouseClicked(_, _, _, 2, _) =>
+        self.reactions += {
+          case MousePressed(_, _, _, 2, _) =>
             sub.onNext(self.peer.getSelectedRow)
         }
       }
