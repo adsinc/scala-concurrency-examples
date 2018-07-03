@@ -61,7 +61,7 @@ object FileManagement {
         path = file.getAbsolutePath,
         name = file.getName,
         parent = file.getParent,
-        modified = Files.getLastModifiedTime(path).toString,
+        modified = "n/a",
         isDir = file.isDirectory,
         size = size,
         state = Created
