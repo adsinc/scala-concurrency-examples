@@ -258,6 +258,7 @@ object FTPClient {
               swing {
                 status.label.text = s"File copied: $s"
                 refreshPane(pane)
+                refreshPane(files.opposite(pane))
               }
           }
         }
