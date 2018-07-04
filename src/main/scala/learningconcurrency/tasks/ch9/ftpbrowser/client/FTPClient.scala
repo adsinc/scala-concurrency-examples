@@ -21,7 +21,7 @@ import scala.concurrent.Future
 import scala.concurrent.duration.DurationInt
 import scala.swing.BorderPanel.Position._
 import scala.swing.event.MousePressed
-import scala.swing.{Alignment, BorderPanel, Button, GridPanel, Label, MainFrame, Menu, MenuBar, MenuItem, ScrollPane, SimpleSwingApplication, Table, TextField}
+import scala.swing.{Alignment, BorderPanel, Button, Frame, GridPanel, Label, MainFrame, Menu, MenuBar, MenuItem, ScrollPane, SimpleSwingApplication, Table, TextField}
 import scala.util.{Failure, Success, Try}
 
 object FTPClient {
@@ -221,7 +221,7 @@ object FTPClient {
     }
 
     implicit class TableOps(val self: Table) {
-      def rowDoubleClicks = Observable[Int] { sub =>
+      def rowDoubleClicks: Observable[Int] = Observable[Int] { sub =>
         self.listenTo(self.mouse.clicks)
         self.reactions += {
           case MousePressed(_, _, _, 2, _) =>
@@ -254,14 +254,22 @@ object FTPClient {
           val (info, destDir) = t
           val dest = s"$destDir${File.separator}${info.name}"
           copyFile(info.path, dest) onComplete {
-            case Success(s) =>
-              swing {
-                status.label.text = s"File copied: $s"
-                refreshPane(pane)
-                refreshPane(files.opposite(pane))
-              }
+            case Success(s) => changeStatus(s"File copied: $s")
           }
         }
+
+      rowActions(pane.buttons.deleteButton)
+        .subscribe { info =>
+          deleteFile(info.path) onComplete {
+            case Success(s) => changeStatus(s"File deleted: $s")
+          }
+        }
+
+      def changeStatus(msg: String): Unit = swing {
+        status.label.text = msg
+        refreshPane(pane)
+        refreshPane(files.opposite(pane))
+      }
     }
 
     setupPane(files.leftPane)
@@ -279,7 +287,7 @@ object FTPClientMain extends SimpleSwingApplication {
       log(s"could not change look&feel: $e")
   }
 
-  def top = new FTPClientFrame with FTPClientApi with FTPClientLogic {
+  def top: Frame = new FTPClientFrame with FTPClientApi with FTPClientLogic {
     def host: String = "127.0.0.1:8000"
   }
 }
