@@ -96,8 +96,8 @@ object FileManagement {
       if (files.contains(dest)) sys.error(s"Destination file $dest exists.")
       info.state match {
         case Idle | Copying(_) =>
-          files(src) = info.copy(state = info.state.inc)
-          files(dest) = FileInfo.creating(destFile, info.size)
+          files(srcFile.getAbsolutePath) = info.copy(state = info.state.inc)
+          files(destFile.getAbsolutePath) = FileInfo.creating(destFile, info.size)
           Txn.afterCommit(_ => copyOnDisk(srcFile, destFile))
           src
       }
@@ -106,9 +106,9 @@ object FileManagement {
     private def copyOnDisk(srcFile: File, dstFile: File): Unit = {
       FileUtils.copyFile(srcFile, dstFile)
       atomic { implicit txn =>
-        val info = files(srcFile.getPath)
-        files(srcFile.getPath) = info.copy(state = info.state.dec)
-        files(dstFile.getPath) = FileInfo(dstFile)
+        val info = files(srcFile.getAbsolutePath)
+        files(srcFile.getAbsolutePath) = info.copy(state = info.state.dec)
+        files(dstFile.getAbsolutePath) = FileInfo(dstFile)
       }
     }
 

@@ -255,6 +255,7 @@ object FTPClient {
           val dest = s"$destDir${File.separator}${info.name}"
           copyFile(info.path, dest) onComplete {
             case Success(s) => changeStatus(s"File copied: $s")
+            case Failure(t) => changeStatus(s"Can't copy file: $t")
           }
         }
 
@@ -262,6 +263,7 @@ object FTPClient {
         .subscribe { info =>
           deleteFile(info.path) onComplete {
             case Success(s) => changeStatus(s"File deleted: $s")
+            case Failure(t) => changeStatus(s"Can't delete file: $t")
           }
         }
 
