@@ -5,6 +5,8 @@ import java.nio.file.Files
 
 import org.apache.commons.io.FileUtils
 import org.apache.commons.io.filefilter.TrueFileFilter
+import org.apache.commons.io.monitor.{FileAlterationListenerAdaptor, FileAlterationMonitor, FileAlterationObserver}
+import rx.lang.scala.{Observable, Subscription}
 
 import scala.concurrent.stm.{TMap, Txn, atomic}
 import scala.sys.error
@@ -125,5 +127,43 @@ object FileManagement {
       }
     }
   }
+
+  sealed trait FileEvent
+
+  case class FileCreated(path: String) extends FileEvent
+
+  case class FileDeleted(path: String) extends FileEvent
+
+  case class FileModified(path: String) extends FileEvent
+
+  def fileSystemEvents(rootPath: String): Observable[FileEvent] =
+    Observable { obs =>
+      val fileMonitor = new FileAlterationMonitor(1000)
+      val fileObs = new FileAlterationObserver(rootPath)
+      val fileLis = new FileAlterationListenerAdaptor {
+        override def onFileCreate(file: File): Unit =
+          obs.onNext(FileCreated(file.getPath))
+
+        override def onFileChange(file: File): Unit =
+          obs.onNext(FileModified(file.getPath))
+
+        override def onFileDelete(file: File): Unit =
+          obs.onNext(FileDeleted(file.getPath))
+
+        override def onDirectoryCreate(directory: File): Unit =
+          obs.onNext(FileCreated(directory.getPath))
+
+        override def onDirectoryChange(directory: File): Unit =
+          obs.onNext(FileModified(directory.getPath))
+
+        override def onDirectoryDelete(directory: File): Unit =
+          obs.onNext(FileDeleted(directory.getPath))
+      }
+      fileObs.addListener(fileLis)
+      fileMonitor.addObserver(fileObs)
+      fileMonitor.start()
+
+      Subscription(fileMonitor.stop())
+    }
 
 }

@@ -1,11 +1,13 @@
 package learningconcurrency.tasks.ch9.ftpbrowser.server
 
+import java.io.File
+
 import akka.actor.{Actor, ActorLogging, ActorSystem, Props}
 import akka.pattern._
 import com.typesafe.config.ConfigFactory
 import learningconcurrency.tasks.ch9.ftpbrowser.server.FTPBrowserServer.FtpServerActor
 import learningconcurrency.tasks.ch9.ftpbrowser.server.FTPBrowserServer.FtpServerActor.{CopyFile, DeleteFile, GetFileList}
-import learningconcurrency.tasks.ch9.ftpbrowser.server.FileManagement.FileSystem
+import learningconcurrency.tasks.ch9.ftpbrowser.server.FileManagement._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -49,4 +51,14 @@ object FTPServer extends App {
   fileSystem.init()
   val actorSystem = ActorSystem("FTPServerSystem", ConfigFactory.parseResources("server.conf"))
   actorSystem.actorOf(FtpServerActor(fileSystem), "server")
+  val fileEventSubscribtion = fileSystemEvents(".").subscribe { e =>
+    e match {
+      case FileCreated(path) =>
+        fileSystem.files.single(path) = FileInfo(new File(path))
+      case FileDeleted(path) =>
+        fileSystem.files.single.remove(path)
+      case FileModified(path) =>
+        fileSystem.files.single(path) = FileInfo(new File(path))
+    }
+  }
 }
