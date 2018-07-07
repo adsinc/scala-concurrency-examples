@@ -15,3 +15,6 @@ libraryDependencies += "org.scala-stm" %% "scala-stm" % "0.8"
 
 libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.5.12"
 libraryDependencies += "com.typesafe.akka" %% "akka-remote" % "2.5.12"
+
+// https://mvnrepository.com/artifact/com.storm-enroute/scalameter
+libraryDependencies += "com.storm-enroute" %% "scalameter" % "0.10.1"
