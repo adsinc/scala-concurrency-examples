@@ -70,7 +70,7 @@ object ScalaMeterTest extends App {
 
   val longAccTime4 = config(
     Key.exec.minWarmupRuns -> 20,
-    Key.exec.maxWarmupRuns -> 50,
+    Key.exec.maxWarmupRuns -> 40,
     Key.exec.benchRuns -> 30,
     Key.verbose -> true
   ) withWarmer new Warmer.Default measure {
@@ -93,6 +93,31 @@ object ScalaMeterTest extends App {
   println(s"4 threads long accumulator time: $longAccTime4")
   println("*" * 80)
 
+  val longAccTime8 = config(
+    Key.exec.minWarmupRuns -> 20,
+    Key.exec.maxWarmupRuns -> 40,
+    Key.exec.benchRuns -> 30,
+    Key.verbose -> true
+  ) withWarmer new Warmer.Default measure {
+    val acc = new AccumulatorLong(0)(_ + _)
+    val total = 1000000
+    val p = 8
+    val threads = for {
+      j <- 0 until p
+    } yield thread {
+      val start = j * total / p
+      var i = start
+      while (i < start + total / p) {
+        acc.add(i)
+        i += 1
+      }
+    }
+    threads foreach (_.join)
+  }
+
+  println(s"8 threads long accumulator time: $longAccTime8")
+  println("*" * 80)
+
   import scala.util.hashing
 
   class ParAccumulatorLong(z: Long)(op: (Long, Long) => Long) {
@@ -100,8 +125,11 @@ object ScalaMeterTest extends App {
     private val values = new AtomicLongArray(par)
 
     def apply(): Long = {
-      val total = z
-      for ()
+      var total = z
+      for (i <- 0 until values.length()) {
+        total = op(total, values.get(i))
+      }
+      total
     }
 
     @tailrec final def add(v: Long): Unit = {
@@ -112,5 +140,55 @@ object ScalaMeterTest extends App {
       if (!values.compareAndSet(pos, ov, nv)) add(v)
     }
   }
+
+  val longParAccTime4 = config(
+    Key.exec.minWarmupRuns -> 20,
+    Key.exec.maxWarmupRuns -> 50,
+    Key.exec.benchRuns -> 30,
+    Key.verbose -> true
+  ) withWarmer new Warmer.Default measure {
+    val acc = new ParAccumulatorLong(0)(_ + _)
+    val total = 1000000
+    val p = 4
+    val threads = for {
+      j <- 0 until p
+    } yield thread {
+      val start = j * total / p
+      var i = start
+      while (i < start + total / p) {
+        acc.add(i)
+        i += 1
+      }
+    }
+    threads foreach (_.join)
+  }
+
+  println(s"4 threads long parallel accumulator time: $longParAccTime4")
+  println("*" * 80)
+
+  val longParAccTime8 = config(
+    Key.exec.minWarmupRuns -> 20,
+    Key.exec.maxWarmupRuns -> 50,
+    Key.exec.benchRuns -> 30,
+    Key.verbose -> true
+  ) withWarmer new Warmer.Default measure {
+    val acc = new ParAccumulatorLong(0)(_ + _)
+    val total = 1000000
+    val p = 8
+    val threads = for {
+      j <- 0 until p
+    } yield thread {
+      val start = j * total / p
+      var i = start
+      while (i < start + total / p) {
+        acc.add(i)
+        i += 1
+      }
+    }
+    threads foreach (_.join)
+  }
+
+  println(s"8 threads long parallel accumulator time: $longParAccTime8")
+  println("*" * 80)
 
 }
