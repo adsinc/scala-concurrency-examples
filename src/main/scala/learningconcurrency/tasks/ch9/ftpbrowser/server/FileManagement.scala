@@ -58,7 +58,6 @@ object FileManagement {
 
     def creating(file: File, size: Long): FileInfo = {
       require(!file.exists(), s"File $file already exists")
-      val path = file.toPath
       FileInfo(
         path = file.getAbsolutePath,
         name = file.getName,
@@ -125,6 +124,17 @@ object FileManagement {
           }
           srcPath
       }
+    }
+
+    def makeDirectory(dirPath: String): String = atomic { implicit txn =>
+      val dirFile = new File(dirPath)
+      if (files.contains(dirPath)) sys.error(s"Destination directory $dirPath exists.")
+      files(dirPath) = FileInfo.creating(dirFile, 0L)
+      Txn.afterCommit { _ =>
+        FileUtils.forceMkdir(dirFile)
+        files.single(dirPath) = FileInfo(dirFile)
+      }
+      dirPath
     }
   }
 

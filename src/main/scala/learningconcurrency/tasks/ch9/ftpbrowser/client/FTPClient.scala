@@ -21,7 +21,7 @@ import scala.concurrent.Future
 import scala.concurrent.duration.DurationInt
 import scala.swing.BorderPanel.Position._
 import scala.swing.event.MousePressed
-import scala.swing.{Alignment, BorderPanel, Button, Frame, GridPanel, Label, MainFrame, Menu, MenuBar, MenuItem, ScrollPane, SimpleSwingApplication, Table, TextField}
+import scala.swing.{Alignment, BorderPanel, Button, Dialog, Frame, GridPanel, Label, MainFrame, Menu, MenuBar, MenuItem, ScrollPane, SimpleSwingApplication, Table, TextField}
 import scala.util.{Failure, Success, Try}
 
 object FTPClient {
@@ -87,6 +87,11 @@ object FTPClient {
       val f = clientActor ? FtpServerActor.DeleteFile(srcPath)
       f.mapTo[Try[String]].map(_.get)
     }
+
+    def makeDirectory(dirPath: String): Future[String] = {
+      val f = clientActor ? FtpServerActor.MakeDirectory(dirPath)
+      f.mapTo[Try[String]].map(_.get)
+    }
   }
 
   abstract class FTPClientFrame extends MainFrame {
@@ -141,7 +146,8 @@ object FTPClient {
       object buttons extends GridPanel(1, 2) {
         val copyButton = new Button("Copy")
         val deleteButton = new Button("Delete")
-        contents += copyButton += deleteButton
+        val makeDirectoryButton = new Button("Make dir")
+        contents += copyButton += deleteButton += makeDirectoryButton
       }
 
       layout(pathBar) = North
@@ -265,6 +271,24 @@ object FTPClient {
             case Success(s) => changeStatus(s"File deleted: $s")
             case Failure(t) => changeStatus(s"Can't delete file: $t")
           }
+        }
+
+      pane.buttons.makeDirectoryButton
+        .clicks
+        .subscribe { _ =>
+          Dialog.showInput(
+            parent = pane,
+            message = "Enter directory name",
+            title = "Make directory",
+            messageType = Dialog.Message.Plain,
+            initial = ""
+          )
+            .map(dirName => s"${pane.currentPath}${File.separator}$dirName")
+            .map(makeDirectory)
+            .foreach(_.onComplete {
+              case Success(s) => changeStatus(s"Directory created: $s")
+              case Failure(t) => changeStatus(s"Can't create directory $t")
+            })
         }
 
       def changeStatus(msg: String): Unit = swing {
